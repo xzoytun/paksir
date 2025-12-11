@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/webhook/panel-pakasir",
+      "dest": "/api/webhook/panel-pakasir.js"
+    },
+    {
+      "src": "/webhook/pakasir",
+      "dest": "/api/webhook/pakasir.js"
+    }
+  ]
+}
