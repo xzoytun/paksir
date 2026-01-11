@@ -1,40 +1,42 @@
-import fetch from "node-fetch";
+const https = require('https');
 
-export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      return res.status(405).send("Harus POST");
-    }
+module.exports = async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Harus POST' });
 
-    let body = "";
-
-    await new Promise((resolve, reject) => {
-      req.on("data", chunk => body += chunk);
-      req.on("end", resolve);
-      req.on("error", reject);
+    let body = '';
+    await new Promise(resolve => {
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', resolve);
     });
 
-    if (!body || !body.includes("username") || !body.includes("token")) {
-      return res.status(400).send("Payload tidak valid");
-    }
+    const params = new URLSearchParams(body);
+    const user = params.get('username');
+    const token = params.get('token');
 
-    // Forward ke API Orkut / Paksir
-    const response = await fetch("https://paksir.sshgreen.cloud/api/mutasi", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept-Encoding": "gzip",
-        "User-Agent": "okhttp/4.12.0"
-      },
-      body: body
+    // Pakai endpoint mutasi QRIS tanpa ID di ujungnya agar semua transaksi terbaca
+    const postData = `auth_username=${encodeURIComponent(user)}&auth_token=${encodeURIComponent(token)}&requests[qris_history][page]=1&requests[0]=account`;
+
+    const options = {
+        hostname: 'app.orderkuota.com',
+        path: `/api/v2/qris/mutasi`, // KUNCI: Hapus angka ID di sini agar QRIS bisa di-scan umum
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(postData),
+            'User-Agent': 'okhttp/4.12.0'
+        }
+    };
+
+    const request = https.request(options, (response) => {
+        let result = '';
+        response.on('data', chunk => { result += chunk; });
+        response.on('end', () => {
+            try { res.status(200).json(JSON.parse(result)); } 
+            catch (e) { res.status(500).json({ error: 'Gagal parse', raw: result }); }
+        });
     });
-
-    const text = await response.text();
-
-    res.status(200).send(text);
-
-  } catch (err) {
-    console.error("MUTASI_ERROR:", err);
-    res.status(500).send("Server error: " + err.message);
-  }
-}
+    request.on('error', (err) => res.status(500).json({ error: err.message }));
+    request.write(postData);
+    request.end();
+};
