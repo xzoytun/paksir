@@ -8,6 +8,10 @@
     {
       "src": "/webhook/pakasir",
       "dest": "/api/webhook/pakasir.js"
+    },
+    {
+      "src": "/api/mutasi",
+      "dest": "/api/mutasi.js"
     }
   ]
 }
