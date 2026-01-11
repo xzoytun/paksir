@@ -1,8 +1,6 @@
 {
-  "name": "qris-generator",
+  "name": "qris-api",
   "version": "1.0.0",
-  "description": "API Generator QRIS Dynamic",
-  "main": "api/generate-qris.js",
   "dependencies": {
     "qrcode": "^1.5.3",
     "qris-pay": "^1.0.2"
