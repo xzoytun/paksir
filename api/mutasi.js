@@ -1,25 +1,41 @@
 const https = require('https');
 
 module.exports = async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Harus POST' });
 
+    // Ambil data yang dikirim bot (username & token)
     let body = '';
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
         req.on('data', chunk => { body += chunk; });
         req.on('end', resolve);
     });
 
     const params = new URLSearchParams(body);
-    const user = params.get('username');
-    const token = params.get('token');
+    const user = params.get('username'); // Ambil dari bot
+    const token = params.get('token');      // Ambil dari bot
 
-    // Pakai endpoint mutasi QRIS tanpa ID di ujungnya agar semua transaksi terbaca
-    const postData = `auth_username=${encodeURIComponent(user)}&auth_token=${encodeURIComponent(token)}&requests[qris_history][page]=1&requests[0]=account`;
+    // Jika bot lupa kirim, kasih pesan error
+    if (!user || !token) {
+        return res.status(400).json({ error: 'Username/Token tidak diterima' });
+    }
+
+    const account_id = '2449343'; 
+
+    const bodyObj = {
+        'auth_username': user,
+        'auth_token': token,
+        'requests[qris_history][page]': '1',
+        'requests[0]': 'account'
+    };
+
+    const postData = Object.keys(bodyObj)
+        .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(bodyObj[key]))
+        .join('&');
 
     const options = {
         hostname: 'app.orderkuota.com',
-        path: `/api/v2/qris/mutasi`, // KUNCI: Hapus angka ID di sini agar QRIS bisa di-scan umum
+        path: `/api/v2/qris/mutasi/${account_id}`,
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -29,14 +45,21 @@ module.exports = async (req, res) => {
     };
 
     const request = https.request(options, (response) => {
-        let result = '';
-        response.on('data', chunk => { result += chunk; });
+        let data = '';
+        response.on('data', (chunk) => { data += chunk; });
         response.on('end', () => {
-            try { res.status(200).json(JSON.parse(result)); } 
-            catch (e) { res.status(500).json({ error: 'Gagal parse', raw: result }); }
+            try {
+                res.status(200).json(JSON.parse(data));
+            } catch (e) {
+                res.status(500).json({ error: 'Gagal parse', raw: data });
+            }
         });
     });
-    request.on('error', (err) => res.status(500).json({ error: err.message }));
+
+    request.on('error', (err) => {
+        res.status(500).json({ error: err.message });
+    });
+
     request.write(postData);
     request.end();
 };
