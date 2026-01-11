@@ -8,11 +8,11 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: 'Harus POST' });
     }
 
-    const { auth_username, auth_token } = req.body;
+    // Ambil data dari body (JSON)
+    const { account_id, auth_username, auth_token } = req.body;
 
-    if (!auth_username || !auth_token) {
-        return res.status(400).json({ error: 'Username/Token tidak boleh kosong' });
-    }
+    // Default ke ID 0 jika bot tidak kirim account_id
+    const finalAccountId = account_id || '0';
 
     const bodyObj = {
         'auth_username': auth_username,
@@ -27,12 +27,9 @@ module.exports = async (req, res) => {
         .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(bodyObj[key]))
         .join('&');
 
-    // --- PERBAIKAN DISINI ---
-    // Saya set ID account default 0 karena username/token biasanya sudah cukup 
-    // untuk menarik data mutasi di beberapa versi API Orderkuota
     const options = {
         hostname: 'app.orderkuota.com',
-        path: `/api/v2/qris/mutasi/0`, 
+        path: `/api/v2/qris/mutasi/${finalAccountId}`,
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -46,10 +43,9 @@ module.exports = async (req, res) => {
         response.on('data', (chunk) => { data += chunk; });
         response.on('end', () => {
             try {
-                const parsed = JSON.parse(data);
-                res.status(response.statusCode).json(parsed);
+                res.status(response.statusCode).json(JSON.parse(data));
             } catch (e) {
-                res.status(500).json({ error: 'Gagal parse dari Orderkuota', raw: data });
+                res.status(500).json({ error: 'Gagal parse', raw: data });
             }
         });
     });
