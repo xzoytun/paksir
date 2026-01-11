@@ -1,51 +1,71 @@
-const QRCode = require('qrcode');
+import QRCode from "qrcode";
 
-function crc16(str) {
+function crc16(payload) {
   let crc = 0xFFFF;
-  for (let c = 0; c < str.length; c++) {
-    crc ^= str.charCodeAt(c) << 8;
-    for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= payload.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
       crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
     }
   }
   return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, "0");
 }
 
-function makeDynamicQRIS(staticQR, amount) {
-  // 1. Ganti dari Statis (11) ke Dinamis (12)
-  let qris = staticQR.replace("010211", "010212");
-
-  // 2. Hapus CRC lama (4 digit terakhir)
-  qris = qris.slice(0, -4);
-
-  // 3. Cek apakah sudah ada tag nominal (54), kalau belum, tambahkan
-  if (!qris.includes("54")) {
-    const amtStr = amount.toString();
-    const amtTag = "54" + amtStr.length.toString().padStart(2, "0") + amtStr;
-    
-    // Sisipkan sebelum tag 58 (Country Code)
-    const splitPoint = qris.indexOf("5802ID");
-    if (splitPoint !== -1) {
-      qris = qris.slice(0, splitPoint) + amtTag + qris.slice(splitPoint);
-    }
+function parseTLV(data) {
+  const result = [];
+  let i = 0;
+  while (i < data.length) {
+    const tag = data.substr(i, 2);
+    const len = parseInt(data.substr(i + 2, 2));
+    const val = data.substr(i + 4, len);
+    result.push({ tag, len, val });
+    i += 4 + len;
   }
-
-  // 4. Hitung dan pasang CRC baru
-  return qris + crc16(qris);
+  return result;
 }
 
-module.exports = async (req, res) => {
+function buildTLV(list) {
+  return list.map(x => x.tag + String(x.val.length).padStart(2, '0') + x.val).join('');
+}
+
+function makeDynamicQRIS(staticQR, amount) {
+  let tlv = parseTLV(staticQR);
+
+  // Ubah jadi dynamic
+  tlv = tlv.map(t => t.tag === "01" ? { ...t, val: "12" } : t);
+
+  // Hapus CRC lama
+  tlv = tlv.filter(t => t.tag !== "63");
+
+  // Tambah nominal (Tag 54)
+  tlv.push({
+    tag: "54",
+    val: amount
+  });
+
+  // Bangun ulang
+  let payload = buildTLV(tlv) + "6304";
+  const crc = crc16(payload);
+
+  return payload + crc;
+}
+
+export default async function handler(req, res) {
   try {
     const { amount, codeqr } = req.query;
 
     if (!amount || !codeqr) {
-      return res.status(400).send("Format salah.");
+      return res.status(400).send("amount & codeqr wajib");
+    }
+
+    if (!codeqr.startsWith("000201")) {
+      return res.status(400).send("QRIS tidak valid");
     }
 
     const dynamicQR = makeDynamicQRIS(codeqr, amount);
-    
+
     const qrBuffer = await QRCode.toBuffer(dynamicQR, {
-      width: 450, // Sedikit lebih besar agar lebih tajam di-scan
+      width: 400,
       margin: 2
     });
 
@@ -53,6 +73,7 @@ module.exports = async (req, res) => {
     res.status(200).send(qrBuffer);
 
   } catch (err) {
-    res.status(500).send("Error: " + err.message);
+    console.error(err);
+    res.status(500).send(err.message);
   }
-};
+}
