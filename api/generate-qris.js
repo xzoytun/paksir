@@ -5,8 +5,10 @@ module.exports = async (req, res) => {
   try {
     const { amount, codeqr } = req.query;
 
+    // Proteksi: Jika parameter tidak ada, jangan lanjut ke gencode
     if (!amount || !codeqr) {
-      return res.status(400).send('Parameter amount dan codeqr wajib diisi!');
+      res.setHeader('Content-Type', 'text/plain');
+      return res.status(400).send('Error: Parameter amount dan codeqr wajib diisi!');
     }
 
     const qrisDynamic = await gencode(codeqr, amount);
@@ -18,6 +20,7 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Type', 'image/png');
     res.status(200).send(qrBuffer);
   } catch (error) {
-    res.status(500).send('Error: ' + error.message);
+    console.error('SERVER_ERROR:', error.message);
+    res.status(500).send('Terjadi kesalahan: ' + error.message);
   }
 };
