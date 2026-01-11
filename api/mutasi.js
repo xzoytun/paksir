@@ -8,12 +8,9 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: 'Harus POST' });
     }
 
-    // Ambil data dari body (JSON)
     const { account_id, auth_username, auth_token } = req.body;
 
-    // Default ke ID 0 jika bot tidak kirim account_id
-    const finalAccountId = account_id || '0';
-
+    // Tambahkan parameter history agar dianggap request valid oleh aplikasi
     const bodyObj = {
         'auth_username': auth_username,
         'auth_token': auth_token,
@@ -23,13 +20,14 @@ module.exports = async (req, res) => {
         'requests[0]': 'account'
     };
 
+    // Ubah object ke string urlencoded
     const postData = Object.keys(bodyObj)
         .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(bodyObj[key]))
         .join('&');
 
     const options = {
         hostname: 'app.orderkuota.com',
-        path: `/api/v2/qris/mutasi/${finalAccountId}`,
+        path: `/api/v2/qris/mutasi/${account_id}`,
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
