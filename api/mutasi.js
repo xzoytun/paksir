@@ -1,7 +1,6 @@
 const https = require('https');
 
 module.exports = async (req, res) => {
-    // Agar bisa dipanggil dari VPS manapun
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
 
@@ -11,8 +10,20 @@ module.exports = async (req, res) => {
 
     const { account_id, auth_username, auth_token } = req.body;
 
-    // Body data untuk Orderkuota
-    const postData = `auth_username=${encodeURIComponent(auth_username)}&auth_token=${encodeURIComponent(auth_token)}`;
+    // Tambahkan parameter history agar dianggap request valid oleh aplikasi
+    const bodyObj = {
+        'auth_username': auth_username,
+        'auth_token': auth_token,
+        'requests[qris_history][page]': '1',
+        'requests[qris_history][dari_tanggal]': '',
+        'requests[qris_history][ke_tanggal]': '',
+        'requests[0]': 'account'
+    };
+
+    // Ubah object ke string urlencoded
+    const postData = Object.keys(bodyObj)
+        .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(bodyObj[key]))
+        .join('&');
 
     const options = {
         hostname: 'app.orderkuota.com',
@@ -32,7 +43,7 @@ module.exports = async (req, res) => {
             try {
                 res.status(response.statusCode).json(JSON.parse(data));
             } catch (e) {
-                res.status(500).json({ error: 'Gagal parse JSON dari Orderkuota', raw: data });
+                res.status(500).json({ error: 'Gagal parse', raw: data });
             }
         });
     });
