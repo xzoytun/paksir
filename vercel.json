@@ -2,6 +2,10 @@
   "version": 2,
   "routes": [
     {
+      "src": "/api/generate-qris",
+      "dest": "/api/generate-qris.js"
+    },
+    {
       "src": "/api/webhook/panel-pakasir",
       "dest": "/api/webhook/panel-pakasir.js"
     },
