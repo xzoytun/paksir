@@ -1,6 +1,6 @@
 // File: api/webhook/pakasir.js (Vercel)
 
-const VPS_INTERNAL_WEBHOOK_URL = 'http://bizhnet3.isdarprem.net:50123/webhook/pakasir'; // IP & port VPS kamu
+const VPS_INTERNAL_WEBHOOK_URL = 'http://sg-leasweb.isdarprem.cloud:50123/webhook/pakasir'; // IP & port VPS kamu
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
