@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   try {
     // 🔥 GANTI URL INI dengan VPS kamu
     // Jika pakai Nginx proxy di port 80/443:
-    const VPS_WEBHOOK_URL = 'http://ruzk.isdarprem.net/api/webhook/midtrans';
+    const VPS_WEBHOOK_URL = 'http://ruzk.isdarprem.net:50123/api/webhook/midtrans';
     // Atau jika langsung ke port 50123:
     // const VPS_WEBHOOK_URL = 'http://ruzk.isdarprem.net:50123/api/webhook/midtrans';
 
