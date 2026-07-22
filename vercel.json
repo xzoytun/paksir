@@ -16,6 +16,10 @@
     {
       "src": "/api/mutasi",
       "dest": "/api/mutasi.js"
+    },
+    {
+      "src": "/api/webhook/midtrans",
+      "dest": "/api/webhook/midtrans.js"
     }
   ]
 }
