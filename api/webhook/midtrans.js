@@ -1,31 +1,56 @@
-// api/webhook/midtrans.js
+// File: api/webhook/midtrans.js (Vercel)
+// Forwarder Midtrans → VPS
+
+const VPS_INTERNAL_WEBHOOK_URL = 'http://ruzk.isdarprem.net:50123/webhook/midtrans';
+// Ganti dengan domain VPS dan path endpoint yang sudah kamu buat di app.js
+
 export default async function handler(req, res) {
+  // Hanya terima POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
+    return res.status(405).json({
+      success: false,
+      message: 'Method not allowed',
+    });
   }
 
   try {
-    // 🔥 GANTI URL INI dengan VPS kamu
-    // Jika pakai Nginx proxy di port 80/443:
-    const VPS_WEBHOOK_URL = 'http://ruzk.isdarprem.net:50123/api/webhook/midtrans';
-    // Atau jika langsung ke port 50123:
-    // const VPS_WEBHOOK_URL = 'http://ruzk.isdarprem.net:50123/api/webhook/midtrans';
+    // Ambil payload dari Midtrans (sudah parsed otomatis oleh Vercel)
+    const payload = req.body;
 
-    const response = await fetch(VPS_WEBHOOK_URL, {
+    // Log untuk debugging (opsional, bisa dihapus)
+    console.log('[Midtrans Webhook] Received:', JSON.stringify(payload).slice(0, 200));
+
+    // Forward ke VPS
+    const forwardResp = await fetch(VPS_INTERNAL_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Kirim header asli dari Midtrans (tidak wajib karena signature ada di body)
-        ...req.headers,
-        'Host': new URL(VPS_WEBHOOK_URL).host,
+        // Bisa tambahkan header untuk identifikasi asal (opsional)
+        'X-Forwarded-From': 'vercel-midtrans',
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-    return res.status(response.status).json(data);
-  } catch (error) {
-    console.error('Proxy error:', error.message);
-    return res.status(500).json({ success: false, message: 'Proxy error: ' + error.message });
+    // Baca response dari VPS (untuk logging)
+    const responseText = await forwardResp.text();
+    const statusCode = forwardResp.status;
+
+    console.log(`[Midtrans Webhook] Forwarded ke VPS, status: ${statusCode}`);
+
+    // Midtrans mengharapkan response 200 OK untuk menganggap sukses
+    return res.status(200).json({
+      success: true,
+      forwardedStatus: statusCode,
+      // responseText, // jika ingin debug
+    });
+  } catch (err) {
+    console.error('[Midtrans Webhook] Error forwarding:', err.message || err);
+
+    // Tetap balik 200 agar Midtrans tidak retry (kecuali mau retry)
+    // Tapi lebih baik 500 agar Midtrans tahu ada masalah
+    return res.status(500).json({
+      success: false,
+      message: 'Internal Server Error',
+    });
   }
 }
