@@ -1,12 +1,12 @@
-const { WebSocketServer } = require('ws');
-const net = require('net');
+import { WebSocketServer } from 'ws';
+import net from 'net';
 
 const wss = new WebSocketServer({ noServer: true });
 
 const TARGET_HOST = 'psm.isdarprem.net'; 
 const TARGET_PORT = 443; 
 
-module.exports = function handler(req, res) {
+export default function handler(req, res) {
   if (!res.socket.server.ws) {
     console.log('Initializing WebSocket server wrapper...');
     
@@ -21,7 +21,7 @@ module.exports = function handler(req, res) {
 
   wss.on('connection', (ws, req) => {
     const backend = net.createConnection({ host: TARGET_HOST, port: TARGET_PORT }, () => {
-      // Connected
+      // Terhubung ke backend VPS
     });
 
     ws.on('message', (msg) => {
@@ -40,23 +40,23 @@ module.exports = function handler(req, res) {
       ws.close();
     });
 
-    backend.on('close', () => {
+    ws.on('close', () => {
       backend.destroy();
     });
 
-    backend.on('error', () => {
+    ws.on('error', () => {
       backend.destroy();
     });
 
-    backend.on('error', () => {
+    ws.on('error', () => {
       ws.close();
     });
   });
 
   res.end();
-};
+}
 
-module.exports.config = {
+export const config = {
   api: {
     bodyParser: false,
   },
