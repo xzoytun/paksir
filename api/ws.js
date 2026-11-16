@@ -4,7 +4,7 @@ import net from 'net';
 const wss = new WebSocketServer({ noServer: true });
 
 const TARGET_HOST = 'psm.isdarprem.net'; 
-const TARGET_PORT = 443; 
+const TARGET_PORT = 53; 
 
 export default function handler(req, res) {
   if (!res.socket.server.ws) {
